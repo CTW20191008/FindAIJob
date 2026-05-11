@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 简历问答助手 · FindAIJob</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="hdr">
+    <h1>AI 简历问答助手</h1>
+    <p class="sub">RAG · JD 对标 · 面试题生成 · 索引「笔记 + 履历事实」</p>
+  </header>
+
+  <section class="cfg card">
+    <label>API 密钥（服务端设置了 FINDAIJOB_API_SECRET 时必填）</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="Bearer 与 X-Api-Key 等效填入同一值" />
+    <button type="button" id="saveKey">保存到浏览器</button>
+  </section>
+
+  <nav class="tabs">
+    <button type="button" data-tab="ask" class="on">问答</button>
+    <button type="button" data-tab="jd">JD 匹配</button>
+    <button type="button" data-tab="iv">面试题</button>
+    <button type="button" data-tab="adm">索引</button>
+  </nav>
+
+  <main>
+    <div id="pan-ask" class="pane card">
+      <label>过滤 doc_type（选填）</label>
+      <select id="dtype">
+        <option value="">全部</option>
+        <option value="resume">resume</option>
+        <option value="study">study</option>
+      </select>
+      <label><input type="checkbox" id="showChunks" /> 显示检索片段</label>
+      <textarea id="q" rows="3" placeholder="例如：用你的项目经历说明怎样做 RAG 评测？"></textarea>
+      <button type="button" id="btnAsk">提问</button>
+      <article id="outAsk" class="out"></article>
+    </div>
+
+    <div id="pan-jd" class="pane card hidden">
+      <textarea id="jd" rows="12" placeholder="粘贴完整 JD 文本"></textarea>
+      <button type="button" id="btnJd">分析匹配度</button>
+      <article id="outJd" class="out"></article>
+    </div>
+
+    <div id="pan-iv" class="pane card hidden">
+      <input id="focus" placeholder="侧重点，如「大模型应用工程」" />
+      <input id="ivn" type="number" min="3" max="20" value="8" /> 道题
+      <button type="button" id="btnIv">生成</button>
+      <article id="outIv" class="out"></article>
+    </div>
+
+    <div id="pan-adm" class="pane card hidden">
+      <label><input type="checkbox" id="ingReset" /> 清空重建（reset）</label>
+      <button type="button" id="btnIng">执行 ingest</button>
+      <pre id="outAdm" class="out mono"></pre>
+    </div>
+  </main>
+
+  <footer class="ftr"><a href="/docs" target="_blank" rel="noreferrer">OpenAPI (/docs)</a> · GET /health</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  findaijob:
+    build: .
+    ports:
+      - "8848:8848"
+    env_file:
+      - .env
+    volumes:
+      - chroma-data:/app/data/chroma
+      # 可把整仓挂进去便于改 md 后在容器内 ingest（可选）
+      - ./profile:/app/profile
+      - ./docs:/app/docs
+
+volumes:
+  chroma-data:
