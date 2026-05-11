@@ -1,0 +1,17 @@
+# 本地事实简历（含隐私，勿提交）
+profile/RESUME_FACTS.md
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# 向量库与运行时数据（实现阶段路径可能调整）
+data/
+.chroma/
