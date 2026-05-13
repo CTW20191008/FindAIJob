@@ -18,6 +18,16 @@
     <button type="button" id="saveKey">保存到浏览器</button>
   </section>
 
+  <section class="upload-card card">
+    <div id="dropZone" class="drop-zone">
+      <span class="drop-icon">📄</span>
+      <p class="drop-title">拖拽简历到此处，或点击选择文件</p>
+      <p class="drop-sub">支持 PDF、DOCX · 最大 20 MB</p>
+      <input id="resumeFile" type="file" accept=".pdf,.docx,.doc" hidden />
+    </div>
+    <div id="uploadStatus" class="upload-status hidden"></div>
+  </section>
+
   <nav class="tabs">
     <button type="button" data-tab="ask" class="on">问答</button>
     <button type="button" data-tab="jd">JD 匹配</button>
@@ -40,9 +50,20 @@
     </div>
 
     <div id="pan-jd" class="pane card hidden">
-      <textarea id="jd" rows="12" placeholder="粘贴完整 JD 文本"></textarea>
+      <div class="jd-meta-row">
+        <input id="jdCompany" placeholder="公司名称（如：字节跳动）" />
+        <input id="jdPosition" placeholder="岗位名称（如：算法工程师）" />
+      </div>
+      <textarea id="jd" rows="10" placeholder="粘贴完整 JD 文本"></textarea>
       <button type="button" id="btnJd">分析匹配度</button>
       <article id="outJd" class="out"></article>
+
+      <details id="jdHistoryPanel" class="jd-history-panel">
+        <summary class="jd-history-title">📋 历史匹配记录</summary>
+        <div id="jdHistoryList" class="jd-history-list">
+          <p class="jd-empty">加载中…</p>
+        </div>
+      </details>
     </div>
 
     <div id="pan-iv" class="pane card hidden">

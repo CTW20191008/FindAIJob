@@ -47,12 +47,14 @@ async def answer_question(question: str, hits: list) -> tuple[str, list[dict]]:
 
 SYSTEM_JD = """你是职业发展顾问与技术招聘分析助手。
 根据提供的【简历相关材料】与【招聘 JD】做匹配分析。
-输出必须是 JSON，键为：
-- match_points: string[] 匹配点
-- gaps: string[] 能力或经历缺口
-- suggestions: string[] 面试表述与补充材料建议
-- risks: string[] 风险或需澄清点
-不要编造简历中未出现的经历；不确定写进 risks。"""
+输出必须是 JSON，包含以下字段：
+- score: integer 0-100，综合匹配度评分（仅基于材料中有据可查的经历）
+- summary: string 一句话总体评价（30字以内）
+- match_points: string[] 简历与 JD 的匹配点，每条具体说明匹配了哪个要求
+- gaps: string[] 简历中缺少或薄弱的能力/经历，指出 JD 中哪条要求未被满足
+- suggestions: string[] 针对缺口的可操作建议，包括：面试中如何弥补表述、可补充的项目/证明材料、短期提升方向
+- risks: string[] 候选人可能被质疑或需澄清的点
+不要编造简历中未出现的经历；不确定的内容写进 risks。"""
 
 
 async def analyze_jd(jd_text: str, hits: list) -> tuple[dict, list[dict]]:
@@ -78,6 +80,8 @@ async def analyze_jd(jd_text: str, hits: list) -> tuple[dict, list[dict]]:
     data = safe_json_extract(raw)
     if not isinstance(data, dict):
         data = {"raw": raw, "match_points": [], "gaps": [], "suggestions": [], "risks": []}
+    data.setdefault("score", None)
+    data.setdefault("summary", "")
     for k in ("match_points", "gaps", "suggestions", "risks"):
         data.setdefault(k, [])
     return data, cites
