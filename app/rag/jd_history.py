@@ -8,10 +8,21 @@ from typing import Any
 
 from app.config import settings
 
+# Schema (new): each record is one analysis run for a specific JD + resume.
+# {
+#   "id":               str (uuid),
+#   "jd_id":            str (references jd_catalog),
+#   "resume_filename":  str,
+#   "matched_at":       ISO str,
+#   "analysis":         dict,
+#   "citations_count":  int,
+#   "has_question_bank": bool,
+#   "qb_categories":    list[str],
+# }
+
 
 def _history_path() -> Path:
-    p = settings.chroma_dir.parent / "jd_history.json"
-    return p
+    return settings.chroma_dir.parent / "jd_history.json"
 
 
 def _load() -> list[dict[str, Any]]:
@@ -34,73 +45,110 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def upsert_entry(
+# ── CRUD ──────────────────────────────────────────────────────────────────────
+
+def upsert_analysis(
     *,
-    company: str,
-    position: str,
-    jd_text: str,
+    jd_id: str,
+    resume_filename: str,
     analysis: dict[str, Any],
     citations_count: int,
-    entry_id: str | None = None,
+    analysis_id: str | None = None,
 ) -> dict[str, Any]:
     entries = _load()
     now = _now_iso()
 
-    if entry_id:
+    if analysis_id:
         for e in entries:
-            if e["id"] == entry_id:
-                e["last_matched_at"] = now
+            if e["id"] == analysis_id:
+                # Different resume → create new entry
+                stored = e.get("resume_filename", "")
+                if resume_filename and stored and resume_filename != stored:
+                    break
+                e["matched_at"] = now
                 e["analysis"] = analysis
                 e["citations_count"] = citations_count
-                e["company"] = company or e["company"]
-                e["position"] = position or e["position"]
-                e["jd_text"] = jd_text or e["jd_text"]
+                e["resume_filename"] = resume_filename
                 _save(entries)
                 return e
 
     entry: dict[str, Any] = {
         "id": str(uuid.uuid4()),
-        "company": company,
-        "position": position,
-        "jd_text": jd_text,
-        "first_matched_at": now,
-        "last_matched_at": now,
+        "jd_id": jd_id,
+        "resume_filename": resume_filename,
+        "matched_at": now,
         "analysis": analysis,
         "citations_count": citations_count,
+        "has_question_bank": False,
+        "qb_categories": [],
     }
     entries.insert(0, entry)
     _save(entries)
     return entry
 
 
-def list_entries() -> list[dict[str, Any]]:
-    entries = _load()
-    return [
-        {
-            "id": e["id"],
-            "company": e.get("company", ""),
-            "position": e.get("position", ""),
-            "first_matched_at": e.get("first_matched_at", ""),
-            "last_matched_at": e.get("last_matched_at", ""),
-            "score": e.get("analysis", {}).get("score"),
-            "summary": e.get("analysis", {}).get("summary", ""),
-            "citations_count": e.get("citations_count", 0),
-        }
-        for e in entries
-    ]
+def list_for_jd(jd_id: str) -> list[dict[str, Any]]:
+    return [e for e in _load() if e.get("jd_id") == jd_id]
 
 
-def get_entry(entry_id: str) -> dict[str, Any] | None:
+def get_analysis(analysis_id: str) -> dict[str, Any] | None:
     for e in _load():
-        if e["id"] == entry_id:
+        if e["id"] == analysis_id:
             return e
     return None
 
 
-def delete_entry(entry_id: str) -> bool:
+def delete_analysis(analysis_id: str) -> bool:
     entries = _load()
-    new = [e for e in entries if e["id"] != entry_id]
+    new = [e for e in entries if e["id"] != analysis_id]
     if len(new) == len(entries):
         return False
     _save(new)
     return True
+
+
+def delete_for_jd(jd_id: str) -> int:
+    entries = _load()
+    new = [e for e in entries if e.get("jd_id") != jd_id]
+    removed = len(entries) - len(new)
+    if removed:
+        _save(new)
+    return removed
+
+
+def set_question_bank(analysis_id: str, has: bool, categories: list[str] | None = None) -> None:
+    entries = _load()
+    for e in entries:
+        if e["id"] == analysis_id:
+            e["has_question_bank"] = has
+            if categories is not None:
+                e["qb_categories"] = categories
+            _save(entries)
+            return
+
+
+# ── Migration from old combined format ────────────────────────────────────────
+
+def is_old_format(entries: list[dict[str, Any]]) -> bool:
+    """Old format has jd_text directly in the record."""
+    return bool(entries) and "jd_text" in entries[0]
+
+
+def migrate_to_new_format(old_entries: list[dict[str, Any]], id_map: dict[str, str]) -> None:
+    """Rewrite history using new schema referencing jd_catalog ids."""
+    new_entries = []
+    for h in old_entries:
+        jd_id = id_map.get(h["id"], "")
+        if not jd_id:
+            continue
+        new_entries.append({
+            "id": h["id"],
+            "jd_id": jd_id,
+            "resume_filename": h.get("resume_filename", ""),
+            "matched_at": h.get("last_matched_at", _now_iso()),
+            "analysis": h.get("analysis", {}),
+            "citations_count": h.get("citations_count", 0),
+            "has_question_bank": h.get("has_question_bank", False),
+            "qb_categories": h.get("qb_categories", []),
+        })
+    _save(new_entries)

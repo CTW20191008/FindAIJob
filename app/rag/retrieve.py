@@ -35,6 +35,7 @@ async def hybrid_retrieve(
     query_embedding: list[float],
     top_k: Optional[int] = None,
     doc_type_filter: Optional[str] = None,
+    jd_entry_id_filter: Optional[str] = None,
 ) -> list[Hit]:
     top_k = top_k or settings.retrieve_top_k
 
@@ -67,6 +68,8 @@ async def hybrid_retrieve(
         dt = str(m.get("doc_type", "study"))
         if doc_type_filter and dt != doc_type_filter:
             continue
+        if jd_entry_id_filter and m.get("jd_entry_id", "") != jd_entry_id_filter:
+            continue
         txt = doc_by_id.get(cid, "")
         hits.append(
             Hit(
@@ -92,6 +95,8 @@ async def hybrid_retrieve(
             m = meta_by_id.get(cid, {})
             dt = str(m.get("doc_type", "study"))
             if doc_type_filter and dt != doc_type_filter:
+                continue
+            if jd_entry_id_filter and m.get("jd_entry_id", "") != jd_entry_id_filter:
                 continue
             seen_c.add(cid)
             hits.append(

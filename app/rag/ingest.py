@@ -51,14 +51,15 @@ async def run_ingest(reset: bool = False) -> tuple[int, list[str]]:
             cid = _chunk_id(c.source_path, global_pos + j)
             ids.append(cid)
             docs.append(c.text)
-            metas.append(
-                {
-                    "source_path": c.source_path,
-                    "heading_path": c.heading_path,
-                    "doc_type": c.doc_type,
-                    "position": global_pos + j,
-                }
-            )
+            meta: dict = {
+                "source_path": c.source_path,
+                "heading_path": c.heading_path,
+                "doc_type": c.doc_type,
+                "position": global_pos + j,
+            }
+            if c.jd_entry_id:
+                meta["jd_entry_id"] = c.jd_entry_id
+            metas.append(meta)
         store.upsert(ids=ids, documents=docs, embeddings=embeddings, metadatas=metas)
         global_pos += len(slice_)
         logs.append(f"[ingest] upsert batch {i // batch + 1}, size {len(slice_)}")

@@ -11,14 +11,14 @@
 5. 将公网首页 URL **写在此处或 README 醒目位置**：  
    - **演示地址**：`_在此粘贴你的 HTTPS URL，例如 https://resume-demo.example.com/_`
 
-注意：不要把 **真实履历** `RESUME_FACTS.md` 推送到公开仓库；公网仅用 **demo_facts.md** 或脱敏文案。
+注意：不要把 **真实履历**、`profile/resume_facts_*.md`、`docs/notes/`、`docs/question_banks/` 或 **`data/`**（含 JD 与分析记录）推到公开仓库；公网仅用 **demo_facts.md** 或脱敏文案。
 
 ## 选项 B：录屏（离线演示）
 
 使用手机或桌面录屏：
 
 1. 本地 `python run.py`，浏览器打开 `/`；
-2. 演示：**索引页执行 ingest → 问答 → 粘贴虚构 JD → 生成面试题**；
+2. 演示：**索引页执行 ingest → 问答 → 「JD」页先在资料库添加虚构 JD → 分析匹配 → 按需生成题库 → 「面试题」页选题**；
 3. 导出 mp4/gif，放到图床或与本仓库同属的私有云盘；
 4. 在 README 「在线 Demo」行链到录屏：  
    - **录屏**：`_粘贴 Loom / 哔哩哔哩 / Cloud 磁盘链接_`

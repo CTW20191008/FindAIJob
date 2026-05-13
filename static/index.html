@@ -13,35 +13,45 @@
   </header>
 
   <section class="cfg card">
-    <label>API 密钥（服务端设置了 FINDAIJOB_API_SECRET 时必填）</label>
-    <input id="apiKey" type="password" autocomplete="off" placeholder="Bearer 与 X-Api-Key 等效填入同一值" />
-    <button type="button" id="saveKey">保存到浏览器</button>
+    <details>
+      <summary class="cfg-summary">🔑 API 密钥（仅部署到公网时需要填写）</summary>
+      <label>与服务端 <code>FINDAIJOB_API_SECRET</code> 一致；本地使用留空即可</label>
+      <input id="apiKey" type="password" autocomplete="off" placeholder="Bearer 与 X-Api-Key 等效填入同一值" />
+      <button type="button" id="saveKey">保存到浏览器</button>
+    </details>
   </section>
 
   <section class="upload-card card">
     <div id="dropZone" class="drop-zone">
       <span class="drop-icon">📄</span>
       <p class="drop-title">拖拽简历到此处，或点击选择文件</p>
-      <p class="drop-sub">支持 PDF、DOCX · 最大 20 MB</p>
+      <p class="drop-sub">支持 PDF、DOCX · 最大 20 MB · 可上传多份</p>
       <input id="resumeFile" type="file" accept=".pdf,.docx,.doc" hidden />
     </div>
     <div id="uploadStatus" class="upload-status hidden"></div>
+
+    <div class="notes-list-section">
+      <h3 class="notes-list-heading">已上传的简历</h3>
+      <div id="resumeList" class="notes-list"><p class="jd-empty">加载中…</p></div>
+    </div>
   </section>
 
   <nav class="tabs">
     <button type="button" data-tab="ask" class="on">问答</button>
     <button type="button" data-tab="jd">JD 匹配</button>
     <button type="button" data-tab="iv">面试题</button>
+    <button type="button" data-tab="notes">笔记</button>
     <button type="button" data-tab="adm">索引</button>
   </nav>
 
   <main>
     <div id="pan-ask" class="pane card">
-      <label>过滤 doc_type（选填）</label>
+      <label>知识来源过滤（选填）</label>
       <select id="dtype">
         <option value="">全部</option>
-        <option value="resume">resume</option>
-        <option value="study">study</option>
+        <option value="resume">简历经历</option>
+        <option value="study">学习笔记</option>
+        <option value="question_bank">题库</option>
       </select>
       <label><input type="checkbox" id="showChunks" /> 显示检索片段</label>
       <textarea id="q" rows="3" placeholder="例如：用你的项目经历说明怎样做 RAG 评测？"></textarea>
@@ -49,38 +59,105 @@
       <article id="outAsk" class="out"></article>
     </div>
 
-    <div id="pan-jd" class="pane card hidden">
-      <div class="jd-meta-row">
-        <input id="jdCompany" placeholder="公司名称（如：字节跳动）" />
-        <input id="jdPosition" placeholder="岗位名称（如：算法工程师）" />
-      </div>
-      <textarea id="jd" rows="10" placeholder="粘贴完整 JD 文本"></textarea>
-      <button type="button" id="btnJd">分析匹配度</button>
-      <article id="outJd" class="out"></article>
+    <div id="pan-jd" class="pane hidden jd-two-col">
 
-      <details id="jdHistoryPanel" class="jd-history-panel">
-        <summary class="jd-history-title">📋 历史匹配记录</summary>
-        <div id="jdHistoryList" class="jd-history-list">
+      <!-- LEFT: JD 资料库 -->
+      <div class="jd-lib card">
+        <div class="jd-lib-header">
+          <h2 class="jd-lib-title">📁 JD 资料库</h2>
+          <button type="button" id="btnAddJD" class="btn-add-jd">＋ 添加 JD</button>
+        </div>
+
+        <!-- Add / Edit form (hidden by default) -->
+        <div id="jdEditForm" class="jd-edit-form hidden">
+          <div class="jd-meta-row">
+            <input id="jdCompany" placeholder="公司名称" />
+            <input id="jdPosition" placeholder="岗位名称" />
+          </div>
+          <textarea id="jdText" rows="8" placeholder="粘贴完整 JD 文本…"></textarea>
+          <div class="jd-form-actions">
+            <button type="button" id="btnSaveJD">保存</button>
+            <button type="button" id="btnCancelJD" class="btn-cancel">取消</button>
+            <span id="jdFormStatus" class="edit-inline-status"></span>
+          </div>
+        </div>
+
+        <div id="jdCatalogList" class="jd-catalog-list">
           <p class="jd-empty">加载中…</p>
         </div>
-      </details>
+      </div>
+
+      <!-- RIGHT: 分析历史 -->
+      <div class="jd-analysis card">
+        <div id="jdAnalysisPane" class="jd-analysis-empty">
+          <p class="jd-empty">← 从左侧选择一个 JD 开始分析</p>
+        </div>
+      </div>
     </div>
 
     <div id="pan-iv" class="pane card hidden">
-      <input id="focus" placeholder="侧重点，如「大模型应用工程」" />
-      <input id="ivn" type="number" min="3" max="20" value="8" /> 道题
+      <label>从题库中检索（选填，需先在 JD 匹配页生成题库）</label>
+      <select id="ivJdFilter">
+        <option value="">不限——从全部知识库生成</option>
+      </select>
+
+      <div id="focusWrap">
+        <!-- free text: shown when no JD with question bank is selected -->
+        <input id="focus" placeholder="侧重点，如「大模型应用工程」（选填）" />
+        <!-- category pills: shown when a JD with question bank is selected -->
+        <div id="focusPills" class="focus-pills hidden">
+          <span class="focus-pills-hint">选择分类（不选 = 全部）</span>
+          <div id="pillList" class="pill-list"></div>
+        </div>
+      </div>
+
+      <input id="ivn" type="number" min="1" max="20" value="8" /> 道题
       <button type="button" id="btnIv">生成</button>
       <article id="outIv" class="out"></article>
     </div>
 
+    <div id="pan-notes" class="pane card hidden">
+      <div class="notes-input-mode">
+        <button type="button" class="mode-btn mode-on" id="modeText">✏️ 粘贴文本</button>
+        <button type="button" class="mode-btn" id="modeFile">📎 上传文件</button>
+      </div>
+
+      <!-- text input mode -->
+      <div id="noteTextArea">
+        <input id="noteTitle" placeholder="笔记标题（如：Transformer 架构笔记）" />
+        <textarea id="noteContent" rows="10" placeholder="粘贴或输入学习笔记内容…"></textarea>
+        <button type="button" id="btnSaveNote">保存到知识库</button>
+      </div>
+
+      <!-- file upload mode -->
+      <div id="noteFileArea" class="hidden">
+        <input id="noteTitleFile" placeholder="笔记标题（留空则使用文件名）" />
+        <div id="noteDropZone" class="drop-zone">
+          <span class="drop-icon">📄</span>
+          <p class="drop-title">拖拽文件到此处，或点击选择</p>
+          <p class="drop-sub">支持 PDF、DOCX · 最大 20 MB</p>
+          <input id="noteFile" type="file" accept=".pdf,.docx,.doc" hidden />
+        </div>
+        <button type="button" id="btnUploadNote">上传并保存到知识库</button>
+      </div>
+
+      <div id="noteStatus" class="upload-status hidden"></div>
+
+      <div class="notes-list-section">
+        <h3 class="notes-list-heading">已保存的笔记</h3>
+        <div id="notesList" class="notes-list"><p class="jd-empty">加载中…</p></div>
+      </div>
+    </div>
+
     <div id="pan-adm" class="pane card hidden">
-      <label><input type="checkbox" id="ingReset" /> 清空重建（reset）</label>
-      <button type="button" id="btnIng">执行 ingest</button>
+      <label><input type="checkbox" id="ingReset" /> 清空重建索引</label>
+      <button type="button" id="btnIng">重建知识库索引</button>
       <pre id="outAdm" class="out mono"></pre>
     </div>
   </main>
 
   <footer class="ftr"><a href="/docs" target="_blank" rel="noreferrer">OpenAPI (/docs)</a> · GET /health</footer>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

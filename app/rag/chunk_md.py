@@ -10,18 +10,26 @@ class Chunk:
     text: str
     source_path: str
     heading_path: str
-    doc_type: str  # study | resume
+    doc_type: str  # study | resume | question_bank
     position: int
+    jd_entry_id: str = ""  # non-empty only for question_bank chunks
 
 
 _HEADER = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+# question_banks/{uuid}.md → extract the UUID stem as entry_id
+_QB_RE = re.compile(r"question_banks[/\\]([0-9a-f-]{36})\.md$", re.IGNORECASE)
 
 
-def _doc_type_for_path(rel: str) -> str:
-    r = rel.replace("\\", "/").upper()
-    if "RESUME_FACTS" in r or "DEMO_FACTS" in r:
-        return "resume"
-    return "study"
+def _doc_type_for_path(rel: str) -> tuple[str, str]:
+    """Returns (doc_type, jd_entry_id)."""
+    r = rel.replace("\\", "/")
+    m = _QB_RE.search(r)
+    if m:
+        return "question_bank", m.group(1)
+    ru = r.upper()
+    if "RESUME_FACTS" in ru or "DEMO_FACTS" in ru:
+        return "resume", ""
+    return "study", ""
 
 
 def split_markdown_file(path: Path, root: Path, chunk_size: int, overlap: int) -> list[Chunk]:
@@ -31,7 +39,7 @@ def split_markdown_file(path: Path, root: Path, chunk_size: int, overlap: int) -
         rel = str(path)
     raw = path.read_text(encoding="utf-8", errors="replace")
     lines = raw.splitlines()
-    doc_type = _doc_type_for_path(rel)
+    doc_type, jd_entry_id = _doc_type_for_path(rel)
 
     sections: list[tuple[str, str]] = []
     current_title = ""
@@ -74,6 +82,7 @@ def split_markdown_file(path: Path, root: Path, chunk_size: int, overlap: int) -
                         heading_path=hp,
                         doc_type=doc_type,
                         position=pos,
+                        jd_entry_id=jd_entry_id,
                     )
                 )
                 pos += 1

@@ -1,9 +1,10 @@
 # ── 隐私：个人简历文件（绝对不要提交）──────────────────────────────
 profile/RESUME_FACTS.md
-profile/resume_facts_uploaded.md
-# 如需保护整个 profile 目录下的所有 .md（除 example 外），可改为：
-# profile/*.md
-# !profile/*.example
+profile/resume_facts_*.md
+
+# ── Web 端生成的学习内容（默认勿提交；可拷贝到 docs 其它路径再分享）──
+docs/notes/
+docs/question_banks/
 
 # ── 密钥与环境变量 ──────────────────────────────────────────────────
 .env
