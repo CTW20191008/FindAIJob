@@ -36,6 +36,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("FINDAIJOB_API_SECRET"),
     )
 
+    # Set to False to skip SSL verification (useful behind corporate proxies)
+    openai_ssl_verify: bool = True
+    # Set to True to bypass system proxy for OpenAI/LLM API calls
+    openai_no_proxy: bool = False
+
     chunk_size: int = 1200
     chunk_overlap: int = 150
     retrieve_top_k: int = 12

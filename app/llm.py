@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator
 
+import httpx
 from openai import AsyncOpenAI
 
 from app.config import settings
@@ -12,6 +13,17 @@ def get_client() -> AsyncOpenAI:
     kwargs: dict[str, Any] = {"api_key": settings.openai_api_key or "dummy"}
     if settings.openai_base_url:
         kwargs["base_url"] = settings.openai_base_url.rstrip("/")
+
+    if not settings.openai_ssl_verify or settings.openai_no_proxy:
+        http_client = httpx.AsyncClient(
+            verify=settings.openai_ssl_verify,
+            # Empty mounts dict disables system proxy for all URLs
+            mounts={"all://": httpx.AsyncHTTPTransport(verify=settings.openai_ssl_verify)}
+            if settings.openai_no_proxy
+            else {},
+        )
+        kwargs["http_client"] = http_client
+
     return AsyncOpenAI(**kwargs)
 
 

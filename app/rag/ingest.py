@@ -38,7 +38,7 @@ async def run_ingest(reset: bool = False) -> tuple[int, list[str]]:
     if not all_chunks:
         return 0, logs
 
-    batch = 32
+    batch = 25  # DashScope text-embedding-v2 limit
     global_pos = 0
     for i in range(0, len(all_chunks), batch):
         slice_ = all_chunks[i : i + batch]
