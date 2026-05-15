@@ -339,9 +339,11 @@ async def job_track_stats(
     from_date: str | None = None,
     to_date: str | None = None,
     days: int | None = None,
+    resume_filename: str | None = None,
 ) -> dict[str, Any]:
     d_from, d_to = repo.resolve_date_window(days=days, from_date=from_date, to_date=to_date)
-    return aggregate_stats(d_from, d_to)
+    rf = (resume_filename or "").strip() or None
+    return aggregate_stats(d_from, d_to, resume_filename=rf)
 
 
 @router.post("/ai/coach")

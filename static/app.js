@@ -1266,6 +1266,8 @@ document.getElementById("btnIng").onclick = async () => {
   let _trackDetailCatalogId = null;
   /** @type {Array<{id:string,company?:string,position?:string,jd_text?:string,analysis_count?:number}>} */
   let trackJdCatalogList = [];
+  /** 用于投递列表摘要、本条简历展示名；在 fillResumeSelects 拉取 `/api/resumes` 后更新 */
+  let trackResumeListCache = [];
 
   async function fillTrackImportJdSelect() {
     const sel = document.getElementById("trackImportJd");
@@ -1388,16 +1390,12 @@ document.getElementById("btnIng").onclick = async () => {
     } catch (_) {
       /* 无密钥或空库 */
     }
-    ["trackNewResume", "trackEdResume", "trackCoachResume"].forEach((sid) => {
+    trackResumeListCache = items;
+    ["trackFilterResume", "trackNewResume"].forEach((sid) => {
       const sel = document.getElementById(sid);
       if (!sel) return;
       const cur = sel.value;
-      const firstOpt =
-        sid === "trackNewResume"
-          ? "简历版本（选填）"
-          : sid === "trackCoachResume"
-            ? "不限定（全部投递）"
-            : "简历";
+      const firstOpt = sid === "trackFilterResume" ? "全部投递" : "简历版本（选填）";
       sel.innerHTML = `<option value="">${firstOpt}</option>`;
       items.forEach((item) => {
         const o = document.createElement("option");
@@ -1407,6 +1405,31 @@ document.getElementById("btnIng").onclick = async () => {
       });
       if (cur) sel.value = cur;
     });
+    syncTrackNewResumeVisibility();
+  }
+
+  function getTrackFilterResume() {
+    return document.getElementById("trackFilterResume")?.value.trim() || "";
+  }
+
+  function syncTrackNewResumeVisibility() {
+    const row = document.getElementById("trackNewResumeRow");
+    const hint = document.getElementById("trackNewResumeHint");
+    const rf = getTrackFilterResume();
+    if (rf) {
+      row?.classList.add("hidden");
+      if (hint) {
+        const disp = resumeDisplayName(rf, trackResumeListCache) || rf;
+        hint.textContent = `新建投递将使用顶部筛选简历：「${disp}」（${rf}）`;
+        hint.classList.remove("hidden");
+      }
+    } else {
+      row?.classList.remove("hidden");
+      if (hint) {
+        hint.textContent = "";
+        hint.classList.add("hidden");
+      }
+    }
   }
 
   function renderStats(s) {
@@ -1496,7 +1519,7 @@ document.getElementById("btnIng").onclick = async () => {
 
   async function fetchTrackCoachLatest() {
     const days = getCoachDaysValue();
-    const rf = document.getElementById("trackCoachResume")?.value.trim() || "";
+    const rf = getTrackFilterResume();
     const q = new URLSearchParams({
       days: String(days),
       resume_filename: rf,
@@ -1539,7 +1562,7 @@ document.getElementById("btnIng").onclick = async () => {
     if (regen) regen.disabled = true;
     body.innerHTML = '<p class="track-coach-loading muted">正在生成，请稍候…</p>';
     const days = getCoachDaysValue();
-    const resume_filename = document.getElementById("trackCoachResume")?.value.trim() || "";
+    const resume_filename = getTrackFilterResume();
     try {
       const j = await post("/api/job-track/ai/coach", {
         days,
@@ -1594,8 +1617,13 @@ document.getElementById("btnIng").onclick = async () => {
     apps.forEach((a) => {
       const div = document.createElement("div");
       div.className = "track-row-item" + (selectedId === a.id ? " selected" : "");
+      const rfScope = getTrackFilterResume();
+      const resumeBit =
+        !rfScope && (a.resume_filename || "").trim()
+          ? ` · ${escapeHtml(resumeDisplayName(a.resume_filename, trackResumeListCache) || a.resume_filename)}`
+          : "";
       div.innerHTML = `<strong>${escapeHtml(a.company)}</strong> · ${escapeHtml(a.position)}<br>
-        <span class="muted small">${escapeHtml(a.direction)} · 投于 ${escapeHtml(a.applied_on)}</span>`;
+        <span class="muted small">${escapeHtml(a.direction)} · 投于 ${escapeHtml(a.applied_on)}${resumeBit}</span>`;
       div.onclick = async () => {
         const det = document.getElementById("trackDetail");
         if (selectedId === a.id && det && !det.classList.contains("hidden")) {
@@ -1615,9 +1643,11 @@ document.getElementById("btnIng").onclick = async () => {
     await ensureMeta();
     await fillResumeSelects();
     const days = document.getElementById("trackDays").value;
+    const rf = getTrackFilterResume();
+    const rfQ = rf ? `&resume_filename=${encodeURIComponent(rf)}` : "";
     const [stats, apps] = await Promise.all([
-      apiFetch(`/api/job-track/stats?days=${encodeURIComponent(days)}`),
-      apiFetch(`/api/job-track/applications?days=${encodeURIComponent(days)}`),
+      apiFetch(`/api/job-track/stats?days=${encodeURIComponent(days)}${rfQ}`),
+      apiFetch(`/api/job-track/applications?days=${encodeURIComponent(days)}${rfQ}`),
     ]);
     renderStats(stats);
     renderList(apps);
@@ -1659,6 +1689,7 @@ document.getElementById("btnIng").onclick = async () => {
 
   async function openDetail(id) {
     await ensureMeta();
+    await fillResumeSelects();
     const app = await apiFetch(`/api/job-track/applications/${encodeURIComponent(id)}`);
     const det = document.getElementById("trackDetail");
     det.classList.remove("hidden");
@@ -1671,8 +1702,15 @@ document.getElementById("btnIng").onclick = async () => {
     document.getElementById("trackEdPlat").value = app.platform || "";
     document.getElementById("trackEdLoc").value = app.location || "";
     document.getElementById("trackEdSalary").value = app.salary_range || "";
-    await fillResumeSelects();
-    document.getElementById("trackEdResume").value = app.resume_filename || "";
+
+    const rfDisp = (app.resume_filename || "").trim();
+    const rLine = document.getElementById("trackDetailResumeLine");
+    if (rLine) {
+      const label = resumeDisplayName(rfDisp, trackResumeListCache) || rfDisp || "（未填）";
+      rLine.innerHTML = rfDisp
+        ? `本条投递简历：<strong title="${escapeHtml(rfDisp)}">${escapeHtml(label)}</strong>`
+        : "本条投递简历：<span class=muted>（未填）</span>";
+    }
 
     _trackDetailCatalogId = app.jd_catalog_id ? String(app.jd_catalog_id).trim() : null;
     const catBox = document.getElementById("trackDetailJdFromCat");
@@ -1953,7 +1991,9 @@ document.getElementById("btnIng").onclick = async () => {
     }
   });
 
-  document.getElementById("trackCoachResume")?.addEventListener("change", () => {
+  document.getElementById("trackFilterResume")?.addEventListener("change", () => {
+    syncTrackNewResumeVisibility();
+    refresh().catch((e) => alert(e.message || String(e)));
     const out = document.getElementById("trackCoachOut");
     if (out && !out.classList.contains("hidden")) {
       void showTrackCoachPanelLatest();
@@ -2010,7 +2050,7 @@ document.getElementById("btnIng").onclick = async () => {
         platform: document.getElementById("trackNewPlat").value.trim(),
         location: document.getElementById("trackNewLoc").value.trim(),
         salary_range: document.getElementById("trackNewSalary").value.trim(),
-        resume_filename: document.getElementById("trackNewResume").value.trim(),
+        resume_filename: getTrackFilterResume() || document.getElementById("trackNewResume").value.trim(),
         jd_text,
         jd_keywords,
         notes: document.getElementById("trackNewNotes").value.trim(),
@@ -2058,7 +2098,6 @@ document.getElementById("btnIng").onclick = async () => {
           platform: document.getElementById("trackEdPlat").value.trim(),
           location: document.getElementById("trackEdLoc").value.trim(),
           salary_range: document.getElementById("trackEdSalary").value.trim(),
-          resume_filename: document.getElementById("trackEdResume").value.trim(),
           jd_text,
           jd_keywords,
           notes: document.getElementById("trackEdNotes").value.trim(),

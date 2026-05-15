@@ -96,7 +96,7 @@ python run.py
 | PATCH/DELETE | `/api/job-track/feedbacks/{feedback_id}` | 更新 / 删除反馈 |
 | GET/POST | `/api/job-track/interviews`（GET 可带 `application_id`） | 面试复盘 |
 | GET/PATCH/DELETE | `/api/job-track/interviews/{session_id}` | 复盘读写删 |
-| GET | `/api/job-track/stats` | 看板聚合（`days` 或日期范围）：含 `by_direction`、`by_resume`、`feedback_distribution`、`interview_sessions_in_window_apps`；初版 **HR/转化率** 见 `*_note` |
+| GET | `/api/job-track/stats` | 看板聚合（`days` 或日期范围），可选 **`resume_filename`**（与列表筛选一致）；含 `by_direction`、`by_resume`、`feedback_distribution`、`interview_sessions_in_window_apps`；初版 **HR/转化率** 见 `*_note` |
 | GET | `/api/job-track/ai/coach/latest` | 读取**已保存**的 AI 建议：Query `days`、`resume_filename`（可空=不限定简历）、`focus`（默认「综合复盘与下周策略」）；返回 `found`、`markdown`、`analyzed_at`（即生成时间）、`window`、`jd_analysis_id` 等，与某次 POST 维度一致 |
 | POST | `/api/job-track/ai/coach` | 按当前统计窗口生成 Markdown 建议并**写入 `data/job_track.db` 表 `ai_coach_snapshots`**。Body：`days`、`focus`（可选）、`resume_filename`（可选，与投递记录简历文件名一致；空=时间窗内全部投递）、`jd_analysis_id`（可选，挂载 `jd_history` 中单条对标分析节选作补充上下文）；响应含同上元数据 |
 | POST | `/api/admin/ingest` | `{ "reset": bool }` 触发索引 |

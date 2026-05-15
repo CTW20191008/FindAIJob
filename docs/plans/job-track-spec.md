@@ -28,6 +28,6 @@
 
 静态页 Tab **求职追踪**：列表、详情、环节下拉、反馈/复盘简报、简易指标与 **AI 建议**。
 
-- **AI 建议**：与 JD 对标分析类似，结果落在 SQLite 表 **`ai_coach_snapshots`**（字段含 `resume_filename`、`days`、`focus`、`applied_from`/`applied_to`、`markdown`、`created_at`，可选 `jd_analysis_id`）。页面按当前「统计窗口 + 简历维度」调用 **`GET /api/job-track/ai/coach/latest`** 展示最近一次；**「重新生成」**走 **`POST /api/job-track/ai/coach`** 写入新快照。**不再用浏览器 localStorage** 作为主要存储。
-- **看板**：总指标下方可展开 **按岗位方向 / 简历版本 / 反馈类型** 表格；展示时间窗投递关联的复盘条数。
+- **AI 建议**：与 JD 对标分析类似，结果落在 SQLite 表 **`ai_coach_snapshots`**（字段含 `resume_filename`、`days`、`focus`、`applied_from`/`applied_to`、`markdown`、`created_at`，可选 `jd_analysis_id`）。**简历维度与页顶筛选一致**——调用 **`GET /api/job-track/ai/coach/latest`** / **`POST /api/job-track/ai/coach`** 时使用与 **`GET .../applications`、`GET .../stats`** 相同的 `resume_filename`（可空）。**不再用浏览器 localStorage** 作为主存储。**「重新生成」**写入新快照。
+- **看板**：顶部工具栏选择 **投递时间窗 + 简历** 后，列表、`GET /stats` 与 AI 建议使用同一 **`resume_filename`**。**岗位详情内仅只读展示本条投递的简历**，不提供简历下拉修改；顶部为「全部投递」时列表项副标题附带简历简短名。**总指标下方仍可展开**按岗位方向 / 简历版本 / 反馈类型的表格及复盘条数说明。
 - **明细**：每条反馈、每场复盘支持 **删除**；复盘条目可展开查看问题列表（含 weak 标记）、失败推测与改进；新建复盘支持拆分「常规问题」「答得不理想」两行输入。

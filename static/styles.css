@@ -1362,6 +1362,17 @@ button {
   flex: 0 0 auto;
   margin-top: 0 !important;
 }
+.track-toolbar-resume select,
+#trackFilterResume {
+  max-width: min(22rem, 58vw) !important;
+}
+.track-detail-resume-line {
+  margin: 0 0 0.5rem;
+}
+.coach-filter-hint {
+  font-size: 0.82rem;
+  opacity: 0.88;
+}
 .track-stats {
   margin-bottom: 1rem;
   padding: 0.75rem;
