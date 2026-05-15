@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AI 简历问答助手 · FindAIJob</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=coach3" />
 </head>
 <body>
   <header class="hdr">
@@ -38,9 +38,11 @@
 
   <nav class="tabs">
     <button type="button" data-tab="ask" class="on">问答</button>
+    <button type="button" data-tab="jdlib">JD 资料库</button>
     <button type="button" data-tab="jd">JD 匹配</button>
     <button type="button" data-tab="iv">面试题</button>
     <button type="button" data-tab="notes">笔记</button>
+    <button type="button" data-tab="track">求职追踪</button>
     <button type="button" data-tab="adm">索引</button>
   </nav>
 
@@ -59,16 +61,14 @@
       <article id="outAsk" class="out"></article>
     </div>
 
-    <div id="pan-jd" class="pane hidden jd-two-col">
-
-      <!-- LEFT: JD 资料库 -->
-      <div class="jd-lib card">
+    <div id="pan-jdlib" class="pane hidden card jd-lib-stack">
+      <div class="jd-lib-top">
         <div class="jd-lib-header">
           <h2 class="jd-lib-title">📁 JD 资料库</h2>
           <button type="button" id="btnAddJD" class="btn-add-jd">＋ 添加 JD</button>
         </div>
+        <p class="muted small jd-lib-list-hint">点击某条 JD 或「✏️」在<strong>该条下方</strong>展开编辑；同一行或「✏️」再点一次，或点击「收起」收回。「＋ 添加 JD」在上方<strong>新建</strong>。「📚」生成面试题库。</p>
 
-        <!-- Add / Edit form (hidden by default) -->
         <div id="jdEditForm" class="jd-edit-form hidden">
           <div class="jd-meta-row">
             <input id="jdCompany" placeholder="公司名称" />
@@ -76,27 +76,61 @@
           </div>
           <textarea id="jdText" rows="8" placeholder="粘贴完整 JD 文本…"></textarea>
           <div class="jd-form-actions">
-            <button type="button" id="btnSaveJD">保存</button>
+            <button type="button" id="btnSaveJD">保存新建</button>
             <button type="button" id="btnCancelJD" class="btn-cancel">取消</button>
             <span id="jdFormStatus" class="edit-inline-status"></span>
           </div>
         </div>
 
         <div id="jdCatalogList" class="jd-catalog-list">
-          <p class="jd-empty">加载中…</p>
+          <p class="jd-empty">打开本页签时加载列表…</p>
+        </div>
+        <div id="jdLibDockHolder" class="jd-lib-dock-holder">
+          <div id="jdLibDetailBelow" class="jd-lib-detail-below inner-card hidden">
+            <div class="jd-lib-detail-head">
+              <h3 id="jdLibHdr" class="jd-analysis-title jd-lib-detail-hdr"></h3>
+              <button type="button" id="btnJdLibCollapse" class="btn-small btn-cancel">收起</button>
+            </div>
+            <div class="jd-meta-row">
+              <input id="jdLibCompany" placeholder="公司" />
+              <input id="jdLibPosition" placeholder="岗位" />
+            </div>
+            <label>JD 原文</label>
+            <textarea id="jdLibText" rows="10" placeholder="JD 正文…"></textarea>
+            <div class="track-inline-actions">
+              <label>JD 关键词 <button type="button" id="btnJdLibGenKw" class="btn-small">生成草稿（AI）</button></label>
+            </div>
+            <textarea id="jdLibKw" rows="3" placeholder="逗号或换行分隔关键词"></textarea>
+            <label>资料库备注（岗位 / JD 备忘录，多端共用）</label>
+            <textarea id="jdLibNotes" rows="3" placeholder="如：猎头渠道、优先级、疑点等"></textarea>
+            <p class="muted small jd-qb-hint">
+              面试题库请在列表该条目的「📚」生成；生成后可在「面试题」页按 JD 选用。
+            </p>
+            <div class="jd-form-actions">
+              <button type="button" id="btnJdLibSave">保存到资料库</button>
+              <span id="jdLibStatus" class="edit-inline-status"></span>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
 
-      <!-- RIGHT: 分析历史 -->
-      <div class="jd-analysis card">
+    <div id="pan-jd" class="pane hidden card">
+      <div class="jd-match-bar">
+        <label class="jd-match-pick-wrap">JD
+          <select id="jdMatchSel"><option value="">— 请选择 JD —</option></select>
+        </label>
+        <p class="muted small jd-match-bar-hint">JD 条目在<strong>JD 资料库</strong>维护；此处做<strong>简历对标分析</strong>与记录。<strong>面试题库</strong>请在资料库里生成。</p>
+      </div>
+      <div class="jd-analysis card jd-analysis-outer">
         <div id="jdAnalysisPane" class="jd-analysis-empty">
-          <p class="jd-empty">← 从左侧选择一个 JD 开始分析</p>
+          <p class="jd-empty">请先在上面的下拉框中选择一条 JD。</p>
         </div>
       </div>
     </div>
 
     <div id="pan-iv" class="pane card hidden">
-      <label>从题库中检索（选填，需先在 JD 匹配页生成题库）</label>
+      <label>从题库中检索（选填：需先在<strong>JD 资料库</strong>为对应 JD 「生成面试题库」）</label>
       <select id="ivJdFilter">
         <option value="">不限——从全部知识库生成</option>
       </select>
@@ -149,6 +183,184 @@
       </div>
     </div>
 
+    <div id="pan-track" class="pane card hidden">
+      <h2 class="track-heading">求职追踪</h2>
+      <div class="track-toolbar">
+        <label>窗口 <select id="trackDays">
+          <option value="7">7 天</option>
+          <option value="30" selected>30 天</option>
+          <option value="90">90 天</option>
+        </select></label>
+        <button type="button" id="btnTrackRefresh">刷新列表与指标</button>
+        <button type="button" id="btnTrackNew">＋ 新建投递</button>
+        <button type="button" id="btnTrackCoach">AI 建议</button>
+      </div>
+      <div id="trackStats" class="track-stats jd-empty">加载统计…</div>
+      <div id="trackCoachOut" class="track-coach-panel hidden" role="region" aria-label="AI 建议">
+        <div class="track-coach-toolbar">
+          <div class="track-coach-toolbar-left">
+            <span class="track-coach-badge">✨ AI 建议</span>
+            <label class="track-coach-scope muted small">统计按简历
+              <select id="trackCoachResume" title="与投递记录中的简历文件名一致；留空表示时间窗内全部投递">
+                <option value="">不限定（全部投递）</option>
+              </select>
+            </label>
+          </div>
+          <div class="track-coach-toolbar-right">
+            <button type="button" id="btnTrackCoachRegen" class="btn-small">重新生成</button>
+            <button type="button" id="btnTrackCoachClose" class="btn-small btn-cancel">收起</button>
+          </div>
+        </div>
+        <div id="trackCoachBody" class="track-coach-body answer-body"></div>
+      </div>
+      <div id="trackNewWrap" class="track-panel hidden card inner-card">
+        <h3>新建投递</h3>
+        <p class="muted small">公司与岗位组合全库唯一；冲突时请改岗位名后缀区分。</p>
+        <label class="muted small">从 JD 资料库关联条目（公司与岗位等从资料库读出）</label>
+        <select id="trackImportJd">
+          <option value="">— 不关联 · 在下面手写 JD —</option>
+        </select>
+        <p id="trackImportJdHint" class="muted small" style="margin: 0 0 0.5rem">有关联时，JD 正文与关键词以资料库为准；新建投递快照会写入求职追踪副本。</p>
+        <div class="track-meta-row">
+          <input id="trackNewCo" placeholder="公司名称" />
+          <input id="trackNewPos" placeholder="岗位名称" />
+        </div>
+        <div class="track-meta-row">
+          <select id="trackNewDir"></select>
+          <input id="trackNewApplied" type="date" title="投递日期" />
+          <input id="trackNewPlat" placeholder="投递平台" list="trackPlatHints" />
+        </div>
+        <datalist id="trackPlatHints"></datalist>
+        <div class="track-meta-row">
+          <input id="trackNewLoc" placeholder="工作地点" />
+          <input id="trackNewSalary" placeholder="薪资范围" />
+          <select id="trackNewResume"><option value="">简历版本（选填）</option></select>
+        </div>
+        <div id="trackNewManualJdWrap" class="hidden">
+          <label>JD 原文（未关联资料库时）</label>
+          <textarea id="trackNewJdFree" rows="5"></textarea>
+          <label class="muted small">JD 关键词（未关联时可填；有关联请去<strong>JD 资料库</strong>）</label>
+          <textarea id="trackNewKwFree" rows="2" placeholder="逗号或换行分隔"></textarea>
+        </div>
+        <label>投递跟进备注</label>
+        <textarea id="trackNewNotes" rows="2" placeholder="如：猎头进展、到岗时间偏好等"></textarea>
+        <div class="track-actions">
+          <button type="button" id="btnTrackSaveNew">保存</button>
+          <button type="button" id="btnTrackCancelNew" class="btn-cancel">取消</button>
+          <span id="trackNewStatus" class="edit-inline-status"></span>
+        </div>
+      </div>
+      <div id="trackList" class="track-list"><p class="jd-empty">加载中…</p></div>
+      <div id="trackDetail" class="track-panel hidden card inner-card">
+        <div class="track-detail-head">
+          <h3 id="trackDetailTitle" class="track-detail-title">投递详情</h3>
+          <div class="track-detail-head-actions">
+            <button type="button" id="btnTrackToggleJobDetail" class="btn-small" aria-expanded="false">
+              岗位详情
+            </button>
+            <button type="button" id="btnTrackCollapseDetail" class="btn-small btn-cancel">收起</button>
+          </div>
+        </div>
+        <p class="muted small track-detail-quick-hint">
+          环节、反馈与复盘默认展示在下方；公司、JD、平台等请在「岗位详情」中查看或编辑。
+        </p>
+        <div id="trackDetailJobWrap" class="track-detail-job-wrap hidden">
+          <div class="track-meta-row">
+            <input id="trackEdCo" placeholder="公司" />
+            <input id="trackEdPos" placeholder="岗位" />
+          </div>
+          <div class="track-meta-row">
+            <select id="trackEdDir"></select>
+            <input id="trackEdApplied" type="date" />
+            <input id="trackEdPlat" placeholder="平台" list="trackPlatHints" />
+          </div>
+          <div class="track-meta-row">
+            <input id="trackEdLoc" placeholder="地点" />
+            <input id="trackEdSalary" placeholder="薪资" />
+            <select id="trackEdResume"><option value="">简历</option></select>
+          </div>
+          <div id="trackDetailJdFromCat" class="inner-card track-jd-cat-snippet hidden">
+            <strong class="muted small">本条投递已关联 JD 资料库条目</strong>
+            <pre id="trackDetailJdPreview" class="track-jd-preview"></pre>
+            <p id="trackDetailKwLine" class="muted small"></p>
+            <p id="trackDetailNotesLine" class="muted small hidden"></p>
+            <button type="button" id="btnTrackOpenJdLib" class="btn-small">打开 JD 资料库编辑</button>
+          </div>
+          <div id="trackDetailJdManual" class="hidden">
+            <label>JD 原文（未关联资料库）</label>
+            <textarea id="trackEdJdFree" rows="5"></textarea>
+            <label>JD 关键词</label>
+            <textarea id="trackEdKwFree" rows="2"></textarea>
+          </div>
+          <label>投递跟进备注</label>
+          <textarea id="trackEdNotes" rows="2" placeholder="如：猎头进展、到岗安排等"></textarea>
+          <label class="inline-check"><input type="checkbox" id="trackEdAbandon" /> 已放弃（冻结自动推进，保留环节结论）</label>
+          <div class="track-actions">
+            <button type="button" id="btnTrackSaveMeta">保存本页信息</button>
+            <span id="trackEdStatus" class="edit-inline-status"></span>
+          </div>
+        </div>
+        <h4>环节</h4>
+        <div id="trackStages" class="track-stages"></div>
+        <h4>反馈</h4>
+        <div id="trackFbList" class="track-sublist"></div>
+        <div class="track-mini-form track-fb-form">
+          <div class="track-fb-inline-row">
+            <label class="track-fb-field track-fb-date-field">
+              <span class="track-fb-lab muted small">日期（先点选，不必手写）</span>
+              <input id="trackFbDate" type="date" autocomplete="off" />
+            </label>
+            <label class="track-fb-field track-fb-time-field">
+              <span class="track-fb-lab muted small">时间</span>
+              <input id="trackFbTimeOnly" type="time" step="60" />
+            </label>
+            <label class="track-fb-field track-fb-field-grow">
+              <span class="track-fb-lab muted small">反馈对象</span>
+              <select id="trackFbSrc"></select>
+            </label>
+            <label class="track-fb-field track-fb-field-grow">
+              <span class="track-fb-lab muted small">可选原因（类型）</span>
+              <select id="trackFbType"></select>
+            </label>
+          </div>
+          <label class="inline-check"><input type="checkbox" id="trackFbTrust" /> 可信</label>
+          <textarea id="trackFbContent" rows="2" placeholder="反馈内容"></textarea>
+          <label class="muted small track-fb-next-hint" for="trackFbNext">待办备忘（一句话即可；完整过程记录用下方「复盘」）</label>
+          <input id="trackFbNext" placeholder="例如：周五前回邮件、补作品链接" />
+          <button type="button" id="btnTrackAddFb">添加反馈</button>
+        </div>
+        <h4>复盘</h4>
+        <div id="trackIvList" class="track-sublist"></div>
+        <div class="track-mini-form track-iv-form">
+          <div class="track-iv-inline-row">
+            <label class="track-iv-field track-iv-field-grow">
+              <span class="track-iv-lab muted small">环节（流程第几关）</span>
+              <select id="trackIvStage"></select>
+            </label>
+            <label class="track-iv-field track-iv-date-field">
+              <span class="track-iv-lab muted small">时间</span>
+              <input id="trackIvDate" type="date" />
+            </label>
+            <label class="track-iv-field track-iv-dur-field">
+              <span class="track-iv-lab muted small">时长（分）</span>
+              <input id="trackIvDur" type="number" min="5" max="480" placeholder="可选" />
+            </label>
+          </div>
+          <details class="track-iv-optional track-stat-detail">
+            <summary class="muted small">选填 · 对方角色（与「环节」不同；多数情况可跳过）</summary>
+            <label class="muted small track-iv-optional-hint" for="trackIvType">对方身份 / 面试形式</label>
+            <input id="trackIvType" type="text" placeholder="例如：交叉技术官、总监终面、HR BP" autocomplete="off" />
+          </details>
+          <textarea id="trackIvQ" rows="2" placeholder="问到的问题（每行一条）"></textarea>
+          <textarea id="trackIvWeak" rows="2" placeholder="答得不好的问题（每行一条，将标记 weak）"></textarea>
+          <textarea id="trackIvResult" rows="1" placeholder="结果"></textarea>
+          <textarea id="trackIvFail" rows="2" placeholder="失败原因推测"></textarea>
+          <textarea id="trackIvImp" rows="2" placeholder="下次改进"></textarea>
+          <button type="button" id="btnTrackAddIv">添加复盘</button>
+        </div>
+      </div>
+    </div>
+
     <div id="pan-adm" class="pane card hidden">
       <label><input type="checkbox" id="ingReset" /> 清空重建索引</label>
       <button type="button" id="btnIng">重建知识库索引</button>
@@ -158,6 +370,6 @@
 
   <footer class="ftr"><a href="/docs" target="_blank" rel="noreferrer">OpenAPI (/docs)</a> · GET /health</footer>
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=jdcat17"></script>
 </body>
 </html>

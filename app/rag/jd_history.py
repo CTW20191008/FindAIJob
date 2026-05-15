@@ -20,6 +20,9 @@ from app.config import settings
 #   "qb_categories":    list[str],
 # }
 
+# 资料库题库挂点（不按单次简历对标）；与 JD 匹配页产生的分析区分开
+QB_ANCHOR_SENTINEL = "__jd_catalog_qb__"
+
 
 def _history_path() -> Path:
     return settings.chroma_dir.parent / "jd_history.json"
@@ -87,8 +90,11 @@ def upsert_analysis(
     return entry
 
 
-def list_for_jd(jd_id: str) -> list[dict[str, Any]]:
-    return [e for e in _load() if e.get("jd_id") == jd_id]
+def list_for_jd(jd_id: str, *, hide_qb_anchor: bool = True) -> list[dict[str, Any]]:
+    xs = [e for e in _load() if e.get("jd_id") == jd_id]
+    if hide_qb_anchor:
+        xs = [e for e in xs if e.get("resume_filename") != QB_ANCHOR_SENTINEL]
+    return xs
 
 
 def get_analysis(analysis_id: str) -> dict[str, Any] | None:
@@ -105,6 +111,26 @@ def delete_analysis(analysis_id: str) -> bool:
         return False
     _save(new)
     return True
+
+
+def ensure_question_bank_anchor(jd_id: str) -> dict[str, Any]:
+    """每个 JD 在资料库里最多一条题库挂点记录，便于与 RAG 中 question_bank 的 entry_id 对应。"""
+    for e in _load():
+        if e.get("jd_id") == jd_id and e.get("resume_filename") == QB_ANCHOR_SENTINEL:
+            return e
+    return upsert_analysis(
+        jd_id=jd_id,
+        resume_filename=QB_ANCHOR_SENTINEL,
+        analysis={
+            "summary": "本条由「JD 资料库」生成的面试题库挂载点（不绑定单次简历对标分析）。",
+            "score": None,
+            "match_points": [],
+            "gaps": [],
+            "suggestions": [],
+            "risks": [],
+        },
+        citations_count=0,
+    )
 
 
 def delete_for_jd(jd_id: str) -> int:

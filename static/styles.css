@@ -176,6 +176,120 @@ button {
   color: var(--muted);
 }
 
+/* ── 求职追踪 · AI 建议（Markdown 卡片） ── */
+.track-coach-panel {
+  margin: 0.75rem 0 1rem;
+  border-radius: 10px;
+  border: 1px solid #2e3f55;
+  background: linear-gradient(160deg, #141c2a 0%, #0f141c 55%, #0d1218 100%);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.track-coach-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  background: linear-gradient(90deg, rgba(110, 207, 142, 0.12) 0%, rgba(110, 207, 142, 0.03) 100%);
+  border-bottom: 1px solid #2a3545;
+  flex-wrap: wrap;
+}
+.track-coach-toolbar-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+.track-coach-scope select {
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  max-width: min(16rem, 40vw);
+}
+.track-coach-badge {
+  font-weight: 700;
+  font-size: 0.93rem;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+.track-coach-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+.track-coach-toolbar-right .btn-small:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.track-coach-cache-meta {
+  margin: 0 0 0.9rem !important;
+  padding: 0.55rem 0.72rem;
+  background: rgba(110, 207, 142, 0.06);
+  border-radius: 8px;
+  border: 1px solid #2e3f55;
+  line-height: 1.55;
+}
+.track-coach-empty {
+  margin: 0 !important;
+  line-height: 1.65;
+}
+.track-coach-body {
+  padding: 0.85rem 1rem 1.05rem;
+  max-height: min(70vh, 560px);
+  overflow-x: auto;
+  overflow-y: auto;
+}
+.track-coach-body.answer-body > :first-child {
+  margin-top: 0;
+}
+.track-coach-body.answer-body > :last-child {
+  margin-bottom: 0;
+}
+.track-coach-body.answer-body h1 {
+  font-size: 1.12rem;
+  margin-top: 0.85rem;
+}
+.track-coach-body.answer-body h2 {
+  font-size: 1.04rem;
+}
+.track-coach-body.answer-body h3 {
+  font-size: 0.98rem;
+  opacity: 0.96;
+}
+.track-coach-body.answer-body hr {
+  border: none;
+  border-top: 1px solid #2a3545;
+  margin: 1rem 0;
+}
+.track-coach-body.answer-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 0 0 0.75rem;
+}
+.track-coach-body.answer-body th,
+.track-coach-body.answer-body td {
+  border: 1px solid #2a3d55;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+.track-coach-body.answer-body th {
+  background: #0f1e2e;
+  color: var(--accent);
+}
+.track-coach-loading {
+  margin: 0 !important;
+  padding: 0.25rem 0;
+  font-style: italic;
+}
+.track-coach-error {
+  margin: 0 !important;
+  color: #e89292;
+  line-height: 1.5;
+}
+
 .answer-cites {
   margin-top: 0.85rem;
   border-top: 1px solid #2a3545;
@@ -562,7 +676,63 @@ button {
   background: #2e4a6a;
 }
 
-/* ── JD 两栏布局 ── */
+/* ── JD 资料库 / 匹配 布局 ── */
+.jd-lib-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.jd-lib-list-hint {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.jd-lib-detail-below {
+  margin-top: 0;
+  padding-top: 0.85rem;
+}
+
+.jd-lib-dock-holder .jd-lib-detail-below {
+  border-top: none;
+}
+
+.jd-lib-detail-below.jd-lib-detail--inline {
+  margin-top: 0.35rem;
+  margin-bottom: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  padding-top: 0.75rem;
+  border: 1px solid #2a3545;
+  border-radius: 8px;
+  background: #141f30;
+}
+
+.jd-lib-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.jd-lib-detail-head .jd-lib-detail-hdr {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.jd-lib-detail-hdr {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.jd-match-result-title {
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+/* ── JD 两栏布局（保留类名供其它页面复用；资料库已改上下结构） ── */
 .jd-two-col {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -577,6 +747,79 @@ button {
 }
 
 .jd-lib, .jd-analysis { min-width: 0; }
+
+.jd-lib-editor-pane {
+  min-width: 0;
+}
+
+.jd-lib-editor-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.jd-match-bar {
+  padding: 0 0 0.85rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid #2a3545;
+}
+
+.jd-match-bar-hint {
+  margin: 0.35rem 0 0;
+}
+
+.jd-match-pick-wrap {
+  display: block;
+  font-weight: 600;
+  margin: 0;
+}
+
+.jd-match-pick-wrap select {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  margin-top: 0.35rem;
+}
+
+.jd-analysis-outer {
+  margin-top: 0;
+}
+
+.jd-lib-ph {
+  min-height: 10rem;
+}
+
+.track-jd-cat-snippet {
+  margin-bottom: 0.75rem;
+}
+
+.track-jd-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 14rem;
+  overflow: auto;
+  font-size: 0.82rem;
+  margin: 0.4rem 0;
+  background: #111823;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #2a3545;
+}
+
+.jd-qb-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.jd-qb-hint code {
+  font-size: 0.72rem;
+}
+
+.jd-lib-split {
+  border: none;
+  border-top: 1px solid #2a3545;
+  margin: 0.85rem 0;
+}
 
 .jd-lib-header {
   display: flex;
@@ -1047,4 +1290,350 @@ button {
   color: var(--muted);
   text-align: right;
   opacity: 0.7;
+}
+
+/* ── 求职追踪 ── */
+.track-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+.track-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.65rem;
+}
+.track-detail-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  align-items: center;
+}
+.track-detail-quick-hint {
+  margin: 0 0 0.6rem;
+  line-height: 1.4;
+}
+.track-detail-job-wrap:not(.hidden) {
+  padding-top: 0.35rem;
+  margin-bottom: 0.85rem;
+  border-top: 1px solid #2a3344;
+}
+.track-detail-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+}
+.track-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+/* 避免全局 select { width:100% } 把「窗口」label 撑满整行，盖住下方按钮导致无法点击 */
+.track-toolbar label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  cursor: default;
+}
+.track-toolbar select {
+  width: auto !important;
+  min-width: 5.5rem;
+  max-width: 12rem;
+  margin: 0 !important;
+  background: #0f1419;
+  color: var(--text);
+  border: 1px solid #334;
+  border-radius: 6px;
+  padding: 0.25rem 0.4rem;
+}
+.track-toolbar > button {
+  flex: 0 0 auto;
+  margin-top: 0 !important;
+}
+.track-stats {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #131b28;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.track-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.track-stat-item strong {
+  color: var(--accent);
+}
+.inner-card {
+  background: #131b28;
+  margin-bottom: 1rem;
+  padding: 0.85rem !important;
+  border-radius: 8px !important;
+}
+.track-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.track-meta-row input,
+.track-meta-row select {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #334;
+  background: #0f1419;
+  color: var(--text);
+}
+.track-panel textarea {
+  width: 100%;
+  margin-bottom: 0.45rem;
+  padding: 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #334;
+  background: #0f1419;
+  color: var(--text);
+}
+.track-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+.track-list .track-row-item {
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.35rem;
+  border-radius: 8px;
+  background: #131b28;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.track-list .track-row-item:hover {
+  border-color: #334;
+}
+.track-list .track-row-item.selected {
+  border-color: var(--accent);
+}
+.track-stage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.88rem;
+}
+.track-stage-row select {
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid #334;
+  background: #0f1419;
+  color: var(--text);
+}
+.track-stage-focus-hint {
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
+}
+.track-stages-details {
+  margin-top: 0.6rem;
+}
+.track-stages-details > .track-stage-row {
+  margin-top: 0.35rem;
+}
+.track-sublist {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.35rem 0 0.6rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.track-sublist .fb-line,
+.track-sublist .iv-line {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #252f40;
+}
+.track-mini-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.track-fb-form .track-fb-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.45rem 0.65rem;
+}
+.track-fb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.track-fb-lab {
+  display: block;
+  line-height: 1.3;
+}
+.track-fb-date-field {
+  flex: 0 1 10.5rem;
+}
+.track-fb-time-field {
+  flex: 0 1 6.75rem;
+}
+.track-fb-field-grow {
+  flex: 1 1 136px;
+  min-width: 112px;
+}
+.track-fb-field select,
+.track-fb-field input[type="date"],
+.track-fb-field input[type="time"] {
+  width: 100%;
+  margin: 0 !important;
+  padding: 0.35rem 0.45rem;
+  box-sizing: border-box;
+}
+.track-fb-next-hint {
+  display: block;
+  margin: 0.25rem 0 0.15rem;
+  line-height: 1.35;
+}
+.track-iv-form .track-iv-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.15rem;
+}
+.track-iv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.track-iv-lab {
+  display: block;
+  line-height: 1.3;
+}
+.track-iv-field-grow {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+.track-iv-date-field {
+  flex: 0 1 10.5rem;
+}
+.track-iv-dur-field {
+  flex: 0 1 7rem;
+}
+.track-iv-optional {
+  margin-top: 0.35rem;
+}
+.track-iv-optional-hint {
+  display: block;
+  margin: 0.35rem 0 0.25rem;
+  line-height: 1.35;
+}
+.track-iv-optional > input[type="text"] {
+  width: 100%;
+  margin: 0 0 0.2rem !important;
+  padding: 0.35rem 0.45rem;
+  box-sizing: border-box;
+}
+.track-iv-field select,
+.track-iv-field input {
+  width: 100%;
+  margin: 0 !important;
+  padding: 0.35rem 0.45rem;
+  box-sizing: border-box;
+}
+.track-mini-form input,
+.track-mini-form select,
+.track-mini-form textarea {
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #334;
+  background: #0f1419;
+  color: var(--text);
+}
+.btn-small {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.45rem;
+  margin-left: 0.35rem;
+  border-radius: 4px;
+  border: 1px solid #334;
+  background: #243044;
+  color: var(--text);
+  cursor: pointer;
+}
+.inline-check {
+  font-size: 0.85rem;
+  margin: 0.35rem 0;
+}
+.muted.small {
+  font-size: 0.8rem;
+}
+
+.track-line-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.track-line-actions > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.track-mini-table-wrap {
+  margin-top: 0.65rem;
+  overflow-x: auto;
+}
+.track-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.track-mini-table th,
+.track-mini-table td {
+  border: 1px solid #2a394d;
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+}
+.track-mini-table th {
+  background: #1e2a3d;
+  color: var(--muted);
+  font-weight: 600;
+}
+.track-stat-detail {
+  margin-top: 0.75rem;
+  border: 1px solid #2a394d;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  background: #121924;
+}
+.track-stat-detail > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.88rem;
+  user-select: none;
+}
+.iv-expand-body {
+  margin: 0.5rem 0 0;
+  padding-left: 0.65rem;
+  border-left: 2px solid #2a394d;
+  font-size: 0.82rem;
+  color: var(--muted);
 }

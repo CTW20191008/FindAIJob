@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.deps import get_store, invalidate_store_cache, require_secret
-from app.llm import embed_texts
+from app.llm import chat_complete, embed_texts, safe_json_extract
 from app.rag.file_extract import extract_text
 from app.rag.ingest import run_ingest
 from app.rag.jd_catalog import (
@@ -20,11 +20,14 @@ from app.rag.jd_catalog import (
     get_entry as catalog_get,
     list_entries as catalog_list,
     migrate_from_history as catalog_migrate,
+    set_jd_catalog_keywords_ai as catalog_set_keywords_ai,
     update_entry as catalog_update,
 )
 from app.rag.jd_history import (
+    QB_ANCHOR_SENTINEL,
     delete_analysis,
     delete_for_jd,
+    ensure_question_bank_anchor,
     get_analysis,
     is_old_format,
     list_for_jd,
@@ -35,6 +38,8 @@ from app.rag.jd_history import (
 from app.rag.retrieve import hybrid_retrieve
 from app.rag.store import VectorStore
 from app.services import qa_flow
+from app.job_track.db import init_db as job_track_init_db
+from app.job_track.router import router as job_track_router
 
 _MAX_UPLOAD_MB = 20
 _NOTES_DIR_NAME = "notes"  # docs/notes/ → doc_type=study
@@ -54,12 +59,16 @@ class JDCatalogBody(BaseModel):
     company: str = Field(..., min_length=1, max_length=100)
     position: str = Field(..., min_length=1, max_length=100)
     jd_text: str = Field(..., min_length=20, max_length=50000)
+    jd_keywords: str = Field(default="", max_length=8000)
+    notes: str = Field(default="", max_length=16000)
 
 
 class JDCatalogUpdateBody(BaseModel):
     company: Optional[str] = Field(default=None, max_length=100)
     position: Optional[str] = Field(default=None, max_length=100)
     jd_text: Optional[str] = Field(default=None, max_length=50000)
+    jd_keywords: Optional[str] = Field(default=None, max_length=8000)
+    notes: Optional[str] = Field(default=None, max_length=16000)
 
 
 class JDMatchBody(BaseModel):
@@ -93,7 +102,62 @@ def _truncate(s: str, n: int = 6000) -> str:
     return s if len(s) <= n else s[:n]
 
 
+async def execute_question_bank_for_analysis(
+    analysis_id: str,
+    store: VectorStore,
+) -> dict[str, Any]:
+    """根据分析记录 ID 生成题库 Markdown、ingest，并标记 has_question_bank。"""
+    from datetime import datetime, timezone
+    from app.services.qa_flow import generate_question_bank, question_bank_to_markdown
+
+    analysis = get_analysis(analysis_id)
+    if not analysis:
+        raise HTTPException(404, "分析记录不存在")
+    jd_cat_id = analysis.get("jd_id", "")
+    jd = catalog_get(jd_cat_id)
+    if not jd:
+        raise HTTPException(404, "关联 JD 不存在")
+
+    jd_text = jd["jd_text"]
+    company = jd.get("company", "未知公司")
+    position = jd.get("position", "未知岗位")
+
+    mix = f"{company} {position} {jd_text[:500]}"
+    q_emb = (await embed_texts([mix]))[0]
+    resume_fn = (analysis.get("resume_filename") or "").strip()
+    hits = await hybrid_retrieve(store, mix, q_emb, top_k=settings.retrieve_top_k + 4, doc_type_filter="resume")
+    if resume_fn and resume_fn != QB_ANCHOR_SENTINEL:
+        sel = [h for h in hits if resume_fn in h.source_path]
+        if sel:
+            hits = sel
+    if not hits:
+        hits = await hybrid_retrieve(store, mix, q_emb, top_k=settings.retrieve_top_k)
+
+    generated_at = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+    qb_data = await generate_question_bank(jd_text, company, position, hits)
+    md_content = question_bank_to_markdown(qb_data, company, position, analysis_id, generated_at)
+
+    qb_dir = settings.knowledge_root.resolve() / "docs" / "question_banks"
+    qb_dir.mkdir(parents=True, exist_ok=True)
+    (qb_dir / f"{analysis_id}.md").write_text(md_content, encoding="utf-8")
+
+    n, _ = await run_ingest(reset=False)
+    invalidate_store_cache()
+    category_names = [c.get("name", "") for c in qb_data.get("categories", []) if c.get("name")]
+    set_question_bank(analysis_id, True, categories=category_names)
+
+    total_q = sum(len(c.get("questions", [])) for c in qb_data.get("categories", []))
+    return {
+        "analysis_id": analysis_id,
+        "jd_id": jd_cat_id,
+        "question_count": total_q,
+        "chunk_count": n,
+        "categories": category_names,
+    }
+
+
 app = FastAPI(title="FindAIJob — AI 简历问答助手", version="0.1.0")
+app.include_router(job_track_router)
 
 
 @app.on_event("startup")
@@ -115,6 +179,8 @@ async def _on_startup() -> None:
     if is_old_format(old_hist):
         id_map = catalog_migrate(old_hist)
         migrate_to_new_format(old_hist, id_map)
+
+    job_track_init_db()
 
 repo_static = Path(__file__).resolve().parent.parent / "static"
 if repo_static.is_dir():
@@ -197,7 +263,71 @@ async def api_jd_catalog_create(
         company=body.company.strip(),
         position=body.position.strip(),
         jd_text=body.jd_text,
+        jd_keywords=body.jd_keywords or "",
+        notes=body.notes or "",
     )
+
+
+# 子路径须注册在 `/api/jd-catalog/{jd_id}` 之前，否则部分环境下的路由解析可能误判为 404
+@app.get("/api/jd-catalog/{jd_id}/analyses")
+async def api_jd_analyses_list(
+    jd_id: str,
+    _: Annotated[None, Depends(require_secret)],
+    include_qb_anchor: bool = False,
+) -> list[dict[str, Any]]:
+    """默认不列出资料库「题库挂点」行（内部占位）；需面试题下拉等场景传 include_qb_anchor=true。"""
+    return list_for_jd(jd_id, hide_qb_anchor=not include_qb_anchor)
+
+
+@app.post("/api/jd-catalog/{jd_id}/keywords-draft")
+@app.post("/api/jd-catalog/{jd_id}/jd-keywords-draft")
+async def api_jd_catalog_keywords_draft(
+    jd_id: str,
+    _: Annotated[None, Depends(require_secret)],
+) -> dict[str, Any]:
+    e = catalog_get(jd_id)
+    if not e:
+        raise HTTPException(404, "JD 不存在")
+    if e.get("jd_keywords_user_edited"):
+        raise HTTPException(400, "JD 关键词已在资料库中手动编辑过，请先清空或改写后再自动生成")
+    jd_text = str(e.get("jd_text") or "").strip()[:8000]
+    if not jd_text:
+        raise HTTPException(400, "请先填写 JD 原文后再生成关键词")
+    if not settings.openai_api_key:
+        raise HTTPException(503, "未配置 OPENAI_API_KEY，无法生成")
+    prompt = (
+        "从以下 JD 中提取 8–15 个中文关键词（短语），用于简历匹配。"
+        '只输出 JSON：{"keywords":["..."]}，不要其它文字。\n\nJD：\n' + jd_text
+    )
+    raw = await chat_complete(
+        [
+            {"role": "system", "content": "只输出合法 JSON。"},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.1,
+        max_tokens=500,
+    )
+    data = safe_json_extract(raw)
+    kws = data.get("keywords")
+    if not isinstance(kws, list):
+        kws = [str(data)]
+    text = ", ".join(str(x).strip() for x in kws if str(x).strip())
+    out = catalog_set_keywords_ai(jd_id, text)
+    if not out:
+        raise HTTPException(404, "JD 不存在")
+    return out
+
+
+@app.post("/api/jd-catalog/{jd_id}/question-bank")
+async def api_jd_catalog_question_bank(
+    jd_id: str,
+    store: Annotated[VectorStore, Depends(get_store)],
+    _: Annotated[None, Depends(require_secret)],
+) -> dict[str, Any]:
+    if not catalog_get(jd_id):
+        raise HTTPException(404, "JD 不存在")
+    anchor = ensure_question_bank_anchor(jd_id)
+    return await execute_question_bank_for_analysis(anchor["id"], store)
 
 
 @app.get("/api/jd-catalog/{jd_id}")
@@ -217,7 +347,23 @@ async def api_jd_catalog_update(
     body: JDCatalogUpdateBody,
     _: Annotated[None, Depends(require_secret)],
 ) -> dict[str, Any]:
-    e = catalog_update(jd_id, company=body.company, position=body.position, jd_text=body.jd_text)
+    kwargs: dict[str, Any] = {}
+    if body.company is not None:
+        kwargs["company"] = body.company.strip()
+    if body.position is not None:
+        kwargs["position"] = body.position.strip()
+    if body.jd_text is not None:
+        kwargs["jd_text"] = body.jd_text
+    if body.jd_keywords is not None:
+        kwargs["jd_keywords"] = body.jd_keywords
+    if body.notes is not None:
+        kwargs["notes"] = body.notes
+    if not kwargs:
+        e = catalog_get(jd_id)
+        if not e:
+            raise HTTPException(404, "JD 不存在")
+        return e
+    e = catalog_update(jd_id, **kwargs)
     if not e:
         raise HTTPException(404, "JD 不存在")
     return e
@@ -235,13 +381,6 @@ async def api_jd_catalog_delete(
 
 
 # ── JD Match & Analysis History ────────────────────────────────────────────
-
-@app.get("/api/jd-catalog/{jd_id}/analyses")
-async def api_jd_analyses_list(
-    jd_id: str,
-    _: Annotated[None, Depends(require_secret)],
-) -> list[dict[str, Any]]:
-    return list_for_jd(jd_id)
 
 
 @app.post("/api/jd-match")
@@ -304,51 +443,7 @@ async def api_generate_question_bank(
     store: Annotated[VectorStore, Depends(get_store)],
     _: Annotated[None, Depends(require_secret)],
 ) -> dict[str, Any]:
-    from datetime import datetime, timezone
-    from app.services.qa_flow import generate_question_bank, question_bank_to_markdown
-
-    analysis = get_analysis(analysis_id)
-    if not analysis:
-        raise HTTPException(404, "分析记录不存在")
-    jd = catalog_get(analysis.get("jd_id", ""))
-    if not jd:
-        raise HTTPException(404, "关联 JD 不存在")
-
-    jd_text = jd["jd_text"]
-    company = jd.get("company", "未知公司")
-    position = jd.get("position", "未知岗位")
-
-    mix = f"{company} {position} {jd_text[:500]}"
-    q_emb = (await embed_texts([mix]))[0]
-    resume_fn = analysis.get("resume_filename", "")
-    hits = await hybrid_retrieve(store, mix, q_emb, top_k=settings.retrieve_top_k + 4, doc_type_filter="resume")
-    if resume_fn:
-        sel = [h for h in hits if resume_fn in h.source_path]
-        if sel:
-            hits = sel
-    if not hits:
-        hits = await hybrid_retrieve(store, mix, q_emb, top_k=settings.retrieve_top_k)
-
-    generated_at = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
-    qb_data = await generate_question_bank(jd_text, company, position, hits)
-    md_content = question_bank_to_markdown(qb_data, company, position, analysis_id, generated_at)
-
-    qb_dir = settings.knowledge_root.resolve() / "docs" / "question_banks"
-    qb_dir.mkdir(parents=True, exist_ok=True)
-    (qb_dir / f"{analysis_id}.md").write_text(md_content, encoding="utf-8")
-
-    n, _ = await run_ingest(reset=False)
-    invalidate_store_cache()
-    category_names = [c.get("name", "") for c in qb_data.get("categories", []) if c.get("name")]
-    set_question_bank(analysis_id, True, categories=category_names)
-
-    total_q = sum(len(c.get("questions", [])) for c in qb_data.get("categories", []))
-    return {
-        "analysis_id": analysis_id,
-        "question_count": total_q,
-        "chunk_count": n,
-        "categories": category_names,
-    }
+    return await execute_question_bank_for_analysis(analysis_id, store)
 
 
 @app.post("/api/interview-questions")

@@ -18,6 +18,7 @@
 | 8 | **Web 页面** | `static/`：`/` |
 | 9 | **项目 README** | 本文件 |
 | 10 | **在线 Demo 或录屏** | 见 [`DEMO.md`](DEMO.md) |
+| 11 | **求职追踪 · AI 建议** | 对标分析级持久化：快照表 `ai_coach_snapshots`（`data/job_track.db`），键为 `days` + `focus` + `resume_filename`；`GET /api/job-track/ai/coach/latest`、`POST /api/job-track/ai/coach` |
 
 ---
 
@@ -65,6 +66,8 @@ python run.py
 
 配置了 `FINDAIJOB_API_SECRET` 时，除 `/`、`/health`、静态资源外，多数接口需在请求头携带密钥。
 
+**求职追踪 · AI 建议**：与 **JD 匹配分析写 `jd_history.json`** 类似，教练输出落在 **SQLite**，按 **`days` + `focus` + `resume_filename`（可为空）** 区分「最近一次」；可选 **`jd_analysis_id`** 把某次对标分析绑进单次生成上下文。Web「求职追踪」页先拉 `GET .../ai/coach/latest`，「重新生成」走 `POST .../ai/coach`。
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/health` | 健康检查 |
@@ -83,6 +86,19 @@ python run.py
 | GET/PUT/DELETE | `/api/resumes`、`/api/resumes/{filename}` | 简历列表与读写删除 |
 | POST | `/api/upload-resume` | 上传 PDF/DOCX → 抽取文本落盘并 ingest |
 | GET/POST | `/api/notes`、`POST /api/notes/upload` 等 | 学习笔记 CRUD |
+| GET | `/api/job-track/meta` | 枚举：环节、方向、反馈来源/类型等 |
+| GET | `/api/job-track/applications` | 投递列表；`days` 或 `from_date`/`to_date`；可选 `direction`、`resume_filename` |
+| POST | `/api/job-track/applications` | 新建投递（**公司+岗位**全库唯一）；自动创建「简历投递=待定」环节 |
+| GET/PATCH/DELETE | `/api/job-track/applications/{id}` | 详情 / 更新 / 删除（级联子表） |
+| PATCH | `/api/job-track/applications/{id}/stages/{stage}` | 环节三态 `pending`/`passed`/`failed`；上游 `passed` 且未放弃时自动解锁下一环节为 `pending` |
+| POST | `/api/job-track/applications/{id}/jd-keywords-draft` | LLM 提取 JD 关键词（用户已手改关键词则拒绝） |
+| GET/POST | `/api/job-track/applications/{id}/feedbacks` | 反馈列表与创建（必须挂 `application_id`） |
+| PATCH/DELETE | `/api/job-track/feedbacks/{feedback_id}` | 更新 / 删除反馈 |
+| GET/POST | `/api/job-track/interviews`（GET 可带 `application_id`） | 面试复盘 |
+| GET/PATCH/DELETE | `/api/job-track/interviews/{session_id}` | 复盘读写删 |
+| GET | `/api/job-track/stats` | 看板聚合（`days` 或日期范围）：含 `by_direction`、`by_resume`、`feedback_distribution`、`interview_sessions_in_window_apps`；初版 **HR/转化率** 见 `*_note` |
+| GET | `/api/job-track/ai/coach/latest` | 读取**已保存**的 AI 建议：Query `days`、`resume_filename`（可空=不限定简历）、`focus`（默认「综合复盘与下周策略」）；返回 `found`、`markdown`、`analyzed_at`（即生成时间）、`window`、`jd_analysis_id` 等，与某次 POST 维度一致 |
+| POST | `/api/job-track/ai/coach` | 按当前统计窗口生成 Markdown 建议并**写入 `data/job_track.db` 表 `ai_coach_snapshots`**。Body：`days`、`focus`（可选）、`resume_filename`（可选，与投递记录简历文件名一致；空=时间窗内全部投递）、`jd_analysis_id`（可选，挂载 `jd_history` 中单条对标分析节选作补充上下文）；响应含同上元数据 |
 | POST | `/api/admin/ingest` | `{ "reset": bool }` 触发索引 |
 
 ---
@@ -91,7 +107,7 @@ python run.py
 
 | 位置 | 内容 | 默认是否进 Git |
 |------|------|----------------|
-| **`data/`** | `chroma/` 向量库、`jd_catalog.json`、`jd_history.json` 等 | **否**（已在 `.gitignore`） |
+| **`data/`** | `chroma/` 向量库、`jd_catalog.json`、`jd_history.json`、**`job_track.db`**（求职追踪：**投递 / 环节 / 反馈 / 复盘** 与 **AI 建议快照 `ai_coach_snapshots`**）等 | **否**（已在 `.gitignore`） |
 | **`profile/resume_facts_*.md`**、**`RESUME_FACTS.md`** | 真实简历正文 | **否** |
 | **`docs/notes/`** | Web 生成的学习笔记 | **否**（已在 `.gitignore`） |
 | **`docs/question_banks/`** | 由 JD + 简历材料归纳的题库 | **否**（已在 `.gitignore`） |
@@ -146,6 +162,7 @@ docker compose exec findaijob python -m app.rag.ingest --reset
 ## 设计文档与扩展
 
 - 产品：`docs/plans/2026-05-11-ai-resume-qa-assistant-design.md`
+- 求职追踪：`docs/plans/job-track-spec.md`
 - RAG：`docs/RAG系统设计_定稿.md`
 - 面试笔记：`docs/大模型与多模态面试笔记_定稿.md`
 
